@@ -48,9 +48,11 @@ public class ApiController {
     @PersistenceContext
     private EntityManager entityManager;
 
+
     @Autowired
     private TransactionRepository repository;
 
+    String abcd = new String();
 
     @PostMapping("/withdrawal")
     public Object DoWithdrawal (@RequestBody JsonNode node) {
