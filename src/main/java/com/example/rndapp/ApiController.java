@@ -52,8 +52,6 @@ public class ApiController {
     @Autowired
     private TransactionRepository repository;
 
-    String abcd = new String();
-
     @PostMapping("/withdrawal")
     public Object DoWithdrawal (@RequestBody JsonNode node) {
         ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -79,7 +77,8 @@ public class ApiController {
                 }
             }
 
-          //  repository.save(withdrawal);
+
+          //repository.save(withdrawal);
 
         } catch (JsonProcessingException e) {
             e.printStackTrace();
