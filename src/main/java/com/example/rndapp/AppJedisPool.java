@@ -39,7 +39,11 @@ public class AppJedisPool {
     private static JedisPool pool = null;
     public static JedisPool getPool() {
         if (pool == null) {
-            pool = new JedisPool(poolConfig, redisHost, redisPort, 6000, redisPassword);
+            if (redisPassword == null || redisPassword.isEmpty()) {
+                pool = new JedisPool(poolConfig, redisHost, redisPort, 6000);
+            } else {
+                pool = new JedisPool(poolConfig, redisHost, redisPort, 6000, redisPassword);
+            }
         }
         return pool;
     }
