@@ -24,6 +24,7 @@ import javax.persistence.metamodel.Metamodel;
 import javax.transaction.Transactional;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,8 +38,11 @@ public class ApiController {
         try {
             acct = objectMapper.treeToValue(node, Account.class);
             try (Jedis jedis = AppJedisPool.getPool().getResource()) {
-                jedis.set("hddasd", "sadasdd");
-                jedis.incr("counter");
+                Map<String,String> map = new HashMap<String,String>();
+                map.put("name", acct.getName());
+                map.put("currency", acct.getCurrency());
+                map.put("balance", String.valueOf(acct.getBalance()));
+                jedis.hset("act:" + acct.getAccountId(), map);
             }
         } catch (JsonProcessingException e) {
             e.printStackTrace();
@@ -76,7 +80,7 @@ public class ApiController {
             }
             try (Jedis jedis = AppJedisPool.getPool().getResource()) {
 
-                Map<String, String> map = jedis.hgetAll("act" + withdrawal.getAccountId());
+                Map<String, String> map = jedis.hgetAll("act:" + withdrawal.getAccountId());
                 if (map == null || map.size() == 0) {
                     System.out.println("map is empty");
                     ApiError apiError =
@@ -93,7 +97,7 @@ public class ApiController {
                         return new ResponseEntity(apiError, apiError.getStatus());
                     }
                 }
-                Double balance = jedis.hincrByFloat("act" + withdrawal.getAccountId(), "balance", -withdrawal.getAmount());
+                Double balance = jedis.hincrByFloat("act:" + withdrawal.getAccountId(), "balance", -withdrawal.getAmount());
                 if (balance < 0) {
                     // increase balance again
                     ApiError apiError =
@@ -137,7 +141,7 @@ public class ApiController {
 
             try (Jedis jedis = AppJedisPool.getPool().getResource()) {
 
-                Map<String, String> map = jedis.hgetAll("act" + deposit.getAccountId());
+                Map<String, String> map = jedis.hgetAll("act:" + deposit.getAccountId());
                 if (map == null || map.size() == 0) {
                     System.out.println("map is empty");
                     ApiError apiError =
@@ -149,7 +153,7 @@ public class ApiController {
                     System.out.println("balance is " + balanceString);
                 }
 
-                Double balance = jedis.hincrByFloat("act" + deposit.getAccountId(), "balance", deposit.getAmount());
+                Double balance = jedis.hincrByFloat("act:" + deposit.getAccountId(), "balance", deposit.getAmount());
                 deposit.setBalance(balance);
             }
 

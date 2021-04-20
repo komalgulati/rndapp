@@ -6,6 +6,7 @@ public class Account {
     private String accountId;
     private String name;
     private double balance;
+    private String currency;
 
     public String getName() {
         return name;
@@ -29,5 +30,13 @@ public class Account {
 
     public void setBalance(double balance) {
         this.balance = balance;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
     }
 }
