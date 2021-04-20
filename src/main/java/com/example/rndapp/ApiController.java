@@ -1,6 +1,7 @@
 package com.example.rndapp;
 
 import com.example.rndapp.models.Account;
+import com.example.rndapp.models.Deposit;
 import com.example.rndapp.models.Withdrawal;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -68,13 +69,38 @@ public class ApiController {
             String uuidAsString = uuid.toString();
             withdrawal.setTransactionId(uuidAsString);
             withdrawal.setTranTime(Timestamp.from(Instant.now()));
+            if (withdrawal.getAmount() <= 0) {
+                ApiError apiError =
+                        new ApiError(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid Request", "Amount must be greater than 0");
+                return new ResponseEntity(apiError, apiError.getStatus());
+            }
             try (Jedis jedis = AppJedisPool.getPool().getResource()) {
-                Double balance = jedis.hincrByFloat("act" + withdrawal.getAccountId(), "balance", -withdrawal.getAmount());
-                if (balance < 0) {
+
+                Map<String, String> map = jedis.hgetAll("act" + withdrawal.getAccountId());
+                if (map == null || map.size() == 0) {
+                    System.out.println("map is empty");
                     ApiError apiError =
-                            new ApiError(HttpStatus.BAD_REQUEST, "Insufficient Balance", "Error");
+                            new ApiError(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid Account", "Invalid Account Number");
                     return new ResponseEntity(apiError, apiError.getStatus());
                 }
+                else {
+                    String balanceString = map.get("balance");
+                    System.out.println("balance is " + balanceString);
+                    double d=Double.parseDouble(balanceString);
+                    if (withdrawal.getAmount() > d) {
+                        ApiError apiError =
+                                new ApiError(HttpStatus.UNPROCESSABLE_ENTITY, "Insufficient Balance", "Insufficient Balance");
+                        return new ResponseEntity(apiError, apiError.getStatus());
+                    }
+                }
+                Double balance = jedis.hincrByFloat("act" + withdrawal.getAccountId(), "balance", -withdrawal.getAmount());
+                if (balance < 0) {
+                    // increase balance again
+                    ApiError apiError =
+                            new ApiError(HttpStatus.UNPROCESSABLE_ENTITY, "Insufficient Balance", "Insufficient Balance");
+                    return new ResponseEntity(apiError, apiError.getStatus());
+                }
+                withdrawal.setBalance(balance);
             }
 
 
@@ -84,6 +110,55 @@ public class ApiController {
             e.printStackTrace();
         }
         return withdrawal;
+    }
+    @PostMapping("/deposit")
+    public Object DoDeposit (@RequestBody JsonNode node) {
+        ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        Deposit deposit = null;
+        try {
+            deposit = objectMapper.treeToValue(node, Deposit.class);
+            try {
+                // thread to sleep for 1000 milliseconds
+                Thread.sleep(23);
+            } catch (Exception e) {
+                System.out.println(e);
+            }
+            if (deposit.getTransactionId() == null || deposit.getTransactionId().isEmpty()) {
+                UUID uuid = UUID.randomUUID();
+                String uuidAsString = uuid.toString();
+                deposit.setTransactionId(uuidAsString);
+            }
+            deposit.setTranTime(Timestamp.from(Instant.now()));
+            if (deposit.getAmount() <= 0) {
+                ApiError apiError =
+                        new ApiError(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid Request", "Amount must be greater than 0");
+                return new ResponseEntity(apiError, apiError.getStatus());
+            }
+
+            try (Jedis jedis = AppJedisPool.getPool().getResource()) {
+
+                Map<String, String> map = jedis.hgetAll("act" + deposit.getAccountId());
+                if (map == null || map.size() == 0) {
+                    System.out.println("map is empty");
+                    ApiError apiError =
+                            new ApiError(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid Account", "Invalid Account Number");
+                    return new ResponseEntity(apiError, apiError.getStatus());
+                }
+                else {
+                    String balanceString = map.get("balance");
+                    System.out.println("balance is " + balanceString);
+                }
+
+                Double balance = jedis.hincrByFloat("act" + deposit.getAccountId(), "balance", deposit.getAmount());
+                deposit.setBalance(balance);
+            }
+
+            //repository.save(deposit);
+
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return deposit;
     }
 
 }
