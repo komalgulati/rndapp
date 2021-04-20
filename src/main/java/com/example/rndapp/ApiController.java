@@ -10,9 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import redis.clients.jedis.Jedis;
 
 import javax.persistence.*;
@@ -56,6 +54,27 @@ public class ApiController {
 
     @Autowired
     private TransactionRepository repository;
+
+    @GetMapping("/accounts/{id}")
+    public Object GetAccount (@PathVariable String id) {
+        Account account;
+        try (Jedis jedis = AppJedisPool.getPool().getResource()) {
+            Map<String, String> map = jedis.hgetAll("act:" + id);
+            if (map == null || map.size() == 0) {
+                System.out.println("map is empty");
+                ApiError apiError =
+                        new ApiError(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid Account", "Invalid Account Number");
+                return new ResponseEntity(apiError, apiError.getStatus());
+            }
+            account = new Account();
+            account.setAccountId(id);
+            account.setName(map.get("name"));
+            account.setCurrency(map.get("currency"));
+            account.setBalance(Double.parseDouble(map.get("balance")));
+        }
+        return account;
+    }
+
 
     @PostMapping("/withdrawal")
     public Object DoWithdrawal (@RequestBody JsonNode node) {
